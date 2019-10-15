@@ -3,11 +3,13 @@
 *    Project - Star Break Coffee
 */
 
-var margin = { left:40, right:20, top:10, bottom:30 };
+var margin = { left:80, right:20, top:50, bottom:100 };
 var width = 600 - margin.left - margin.right,
     height = 400 - margin.top - margin.bottom;
 
 var flag = true
+
+var t = d3.transition().duration(750)
 
 var g = d3.select("#chart-area")
     .append("svg")
@@ -57,7 +59,8 @@ d3.json("data/revenues.json").then(data => {
     });
 
     d3.interval(() => {
-        update(data)
+        var newData = flag ? data : data.slice(1)
+        update(newData)
         flag = !flag
     }, 1000)
 
@@ -73,19 +76,26 @@ function update(data) {
 
     // X Axis
     var xAxisCall = d3.axisBottom(x)
-    xAxisGroup.call(xAxisCall)
+    xAxisGroup.transition(t).call(xAxisCall)
 
     // Y Axis
     var yAxisCall = d3.axisLeft(y)
         .tickFormat(d => { return "$" + d })
-    yAxisGroup.call(yAxisCall)
+    yAxisGroup.transition(t).call(yAxisCall)
 
     // join new data with old elements
     var rects = g.selectAll("rect")
-        .data(data)
+        .data(data, function(d) {
+            return d.month
+        })
 
     // exit old elements not present in new data
-    rects.exit().remove()
+    rects.exit()
+        .attr("fill", "red")
+    .transition(t)
+        .attr("y", y(0))
+        .attr('height', 0)
+        .remove()
 
     // update old elements present in new data
     rects
@@ -97,11 +107,14 @@ function update(data) {
     // enter new elements present in new data
     rects.enter()
         .append("rect")
-        .attr("y", d => { return y(d[value]) })
-        .attr("x", d => { return x(d.month) })
-        .attr("height", d => { return height - y(d[value]) })
-        .attr("width", x.bandwidth)
-        .attr("fill", "grey")
+            .attr("x", d => { return x(d.month) })
+            .attr("width", x.bandwidth)
+            .attr("fill", "grey")
+            .attr("y", y(0))
+            .attr("height", 0)
+        .transition(t)
+            .attr("y", d => { return y(d[value]) })
+            .attr("height", d => { return height - y(d[value]) })
 
     var label = flag ? "Revenue" : "Profit"
     yLabel.text(label)
